@@ -549,6 +549,7 @@ final class WidgetDataStore {
             // Flag it as no-data; the tile renders "No data" instead of inventing usage.
             result = descriptor.sample
             result.hasData = false
+            result.isHidden = descriptor.hideWhenNoData
         }
 
         // Single global choke point: dashboard/share rows and menu-bar values all funnel through here,
@@ -591,7 +592,7 @@ final class WidgetDataStore {
 
     private func resolve(_ line: MetricLine, descriptor: WidgetDescriptor) -> WidgetData? {
         switch line {
-        case .progress(_, let used, let limit, let format, let resetsAt, let periodDurationMs, _):
+        case .progress(_, let used, let limit, let format, let resetsAt, let periodDurationMs, _, let titleOverride):
             // A percent meter is a bounded 0...100 domain; sanitize an out-of-range sample (a provider
             // reporting a negative or >100 utilization) here, at the single construction choke point
             // every provider funnels through, so no surface — headline, flip tooltip, menu bar — can
@@ -601,7 +602,7 @@ final class WidgetDataStore {
             // conveyed by the meter's spent state rather than hidden.
             let normalizedUsed = format == .percent ? ProviderParse.clampPercent(used) : used
             var result = WidgetData(
-                title: descriptor.sample.title,
+                title: titleOverride ?? descriptor.sample.title,
                 icon: descriptor.sample.icon,
                 kind: format.metricKind,
                 used: normalizedUsed,
