@@ -189,9 +189,22 @@ enum ClaudeUsageMapper {
                 titleOverride: isEnterprise ? "Spend" : nil
             ))
         } else if used > 0 {
-            // No monthly cap: an unbounded spend, carried raw so it formats through `MetricFormatter`
-            // (compact like the spend tiles, e.g. "$1.2K spent") instead of a baked full-currency string.
-            lines.append(.values(label: "Extra usage spent", values: [MetricValue(number: used, kind: .dollars)]))
+            if isEnterprise {
+                // Enterprise without a monthly_limit: emit as a progress line so titleOverride applies.
+                // The limit is set to `used` (100%) — there is no real cap, but the bar communicates
+                // the spend amount under the correct "Spend" label rather than "Extra Usage".
+                lines.append(.progress(
+                    label: "Extra usage spent",
+                    used: used,
+                    limit: used,
+                    format: .dollars,
+                    titleOverride: "Spend"
+                ))
+            } else {
+                // No monthly cap: an unbounded spend, carried raw so it formats through `MetricFormatter`
+                // (compact like the spend tiles, e.g. "$1.2K spent") instead of a baked full-currency string.
+                lines.append(.values(label: "Extra usage spent", values: [MetricValue(number: used, kind: .dollars)]))
+            }
         }
     }
 

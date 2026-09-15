@@ -24,7 +24,7 @@ enum ProviderCatalog {
                 // CLI account. Desktop-only cards rely on the Desktop session index instead.
                 let scanner = ClaudeLogUsageScanner(
                     accountUUID: user, organizationUUID: card.organizationID,
-                    allowsUnattributedSessions: !card.usesDesktopCredentials || card.allowsUnattributedPiUsage,
+                    allowsUnattributedSessions: !card.usesDesktopCredentials,
                     additionalConfigDirectories: card.additionalLogDirectories
                 )
                 return ClaudeProvider(
