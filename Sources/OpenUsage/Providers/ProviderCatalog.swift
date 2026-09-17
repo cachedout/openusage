@@ -19,12 +19,12 @@ enum ProviderCatalog {
             providers = claudeCards.map { card in
                 let identity = claudeIdentityKeys[card.id] ?? card.identityKey
                 let user = identity.split(separator: "|").first.map(String.init)
-                // CLI-based cards own their ~/.claude/ home unconditionally: sessions there are
-                // unattributed (no ownerOrganizationUuid stamp) but always belong to the default
-                // CLI account. Desktop-only cards rely on the Desktop session index instead.
+                // Only the primary CLI card (no swap account) claims unattributed sessions: swap
+                // cards also scan ~/.claude but must not each duplicate that spend. Desktop-only
+                // cards rely on the Desktop session index instead.
                 let scanner = ClaudeLogUsageScanner(
                     accountUUID: user, organizationUUID: card.organizationID,
-                    allowsUnattributedSessions: !card.usesDesktopCredentials,
+                    allowsUnattributedSessions: !card.usesDesktopCredentials && card.swapAccount == nil,
                     additionalConfigDirectories: card.additionalLogDirectories
                 )
                 return ClaudeProvider(
