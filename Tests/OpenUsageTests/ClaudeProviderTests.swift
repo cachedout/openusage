@@ -224,6 +224,31 @@ final class ClaudeUsageMapperTests: XCTestCase {
         XCTAssertEqual(titleOverride, "Spend")
     }
 
+    func testEnterpriseUncappedExtraUsageIsValuesRowWithSpendTitle() throws {
+        // Enterprise accounts without a monthly_limit have unbounded spend — no real cap exists, so
+        // the mapper must not manufacture a false 100% limit. The row must be a `.values` line (not
+        // `.progress`) so it renders as an unbounded amount, and it must still carry titleOverride
+        // "Spend" so enterprise users see the correct label rather than the consumer "Extra Usage".
+        let response = HTTPResponse(
+            statusCode: 200,
+            headers: [:],
+            body: Data(#"{"extra_usage":{"is_enabled":true,"used_credits":123456}}"#.utf8)
+        )
+
+        let mapped = try ClaudeUsageMapper.mapUsageResponse(
+            response,
+            credentials: ClaudeOAuth(subscriptionType: "enterprise")
+        )
+
+        guard case .values(_, _, _, _, _, _, let titleOverride)? =
+                mapped.lines.first(where: { $0.label == "Extra usage spent" })
+        else { return XCTFail("Expected an uncapped enterprise spend as a .values line, not .progress") }
+        XCTAssertEqual(titleOverride, "Spend",
+                       "uncapped enterprise spend must carry titleOverride 'Spend' on the .values line")
+        XCTAssertNil(progress(mapped.lines, "Extra usage spent"),
+                     "no .progress line must be emitted for an uncapped enterprise spend")
+    }
+
     func testEnterpriseOmitsTokenWindowRows() throws {
         // Enterprise accounts have no per-session or per-week token caps, so Session, Weekly, Sonnet,
         // and Fable rows must not appear — they would always show "No data" and mislead the user.
