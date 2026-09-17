@@ -112,9 +112,9 @@ enum LocalLimitsAPI {
                 )
 
             case (.value(let expectedKind, let expectedLabel),
-                  .values(_, let values, _, let expiries, _, _)),
+                  .values(_, let values, _, let expiries, _, _, _)),
                  (.progressOrValue(let expectedKind, let expectedLabel),
-                  .values(_, let values, _, let expiries, _, _)):
+                  .values(_, let values, _, let expiries, _, _, _)):
                 guard let metric = values.first(where: { value in
                     value.kind == expectedKind && (expectedLabel == nil || value.label == expectedLabel)
                 }) else { return nil }

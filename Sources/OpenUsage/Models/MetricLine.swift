@@ -101,7 +101,8 @@ enum MetricLine: Hashable, Sendable, Codable {
         colorHex: String? = nil,
         expiriesAt: [Date] = [],
         unknownModels: [String] = [],
-        modelBreakdown: ModelUsageBreakdown? = nil
+        modelBreakdown: ModelUsageBreakdown? = nil,
+        titleOverride: String? = nil
     )
     case progress(
         label: String,
@@ -121,7 +122,7 @@ enum MetricLine: Hashable, Sendable, Codable {
         switch self {
         case .text(let label, _, _, _),
              .progress(let label, _, _, _, _, _, _, _),
-             .values(let label, _, _, _, _, _),
+             .values(let label, _, _, _, _, _, _),
              .badge(let label, _, _, _),
              .chart(let label, _, _):
             return label
@@ -198,7 +199,8 @@ enum MetricLine: Hashable, Sendable, Codable {
                 colorHex: try container.decodeIfPresent(String.self, forKey: .colorHex),
                 expiriesAt: try container.decodeIfPresent([Date].self, forKey: .expiriesAt) ?? [],
                 unknownModels: try container.decodeIfPresent([String].self, forKey: .unknownModels) ?? [],
-                modelBreakdown: try container.decodeIfPresent(ModelUsageBreakdown.self, forKey: .modelBreakdown)
+                modelBreakdown: try container.decodeIfPresent(ModelUsageBreakdown.self, forKey: .modelBreakdown),
+                titleOverride: try container.decodeIfPresent(String.self, forKey: .titleOverride)
             )
         case .progress:
             self = .progress(
@@ -236,7 +238,7 @@ enum MetricLine: Hashable, Sendable, Codable {
             try container.encode(value, forKey: .value)
             try container.encodeIfPresent(colorHex, forKey: .colorHex)
             try container.encodeIfPresent(subtitle, forKey: .subtitle)
-        case .values(let label, let values, let colorHex, let expiriesAt, let unknownModels, let modelBreakdown):
+        case .values(let label, let values, let colorHex, let expiriesAt, let unknownModels, let modelBreakdown, let titleOverride):
             try container.encode(LineType.values, forKey: .type)
             try container.encode(label, forKey: .label)
             try container.encode(values, forKey: .values)
@@ -244,6 +246,7 @@ enum MetricLine: Hashable, Sendable, Codable {
             if !expiriesAt.isEmpty { try container.encode(expiriesAt, forKey: .expiriesAt) }
             if !unknownModels.isEmpty { try container.encode(unknownModels, forKey: .unknownModels) }
             try container.encodeIfPresent(modelBreakdown, forKey: .modelBreakdown)
+            try container.encodeIfPresent(titleOverride, forKey: .titleOverride)
         case .progress(let label, let used, let limit, let format, let resetsAt, let periodDurationMs, let colorHex, let titleOverride):
             try container.encode(LineType.progress, forKey: .type)
             try container.encode(label, forKey: .label)

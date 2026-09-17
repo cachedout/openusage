@@ -177,7 +177,7 @@ final class OpenCodeProviderTests: XCTestCase {
                 databasePaths: { ["/oc/opencode.db"] }
             )
         ).refresh()
-        guard case .values(_, let values, _, _, _, _)? = snapshot.line(label: "Today") else {
+        guard case .values(_, let values, _, _, _, _, _)? = snapshot.line(label: "Today") else {
             return XCTFail("expected a Today tile")
         }
         XCTAssertFalse(values.contains(where: \.estimated))

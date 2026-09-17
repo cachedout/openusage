@@ -318,7 +318,7 @@ final class ClaudeUsageMapperTests: XCTestCase {
             credentials: ClaudeOAuth(subscriptionType: "max")
         )
 
-        guard case .values(_, let values, _, _, _, _)? = mapped.lines.first(where: { $0.label == "Extra usage spent" }) else {
+        guard case .values(_, let values, _, _, _, _, _)? = mapped.lines.first(where: { $0.label == "Extra usage spent" }) else {
             return XCTFail("Expected an Extra usage spent .values line")
         }
         XCTAssertEqual(values.count, 1)
@@ -886,7 +886,7 @@ final class ClaudeProviderTests: XCTestCase {
     }
 
     private func values(_ lines: [MetricLine], _ label: String) -> [MetricValue]? {
-        guard case .values(_, let values, _, _, _, _) = lines.first(where: { $0.label == label }) else {
+        guard case .values(_, let values, _, _, _, _, _) = lines.first(where: { $0.label == label }) else {
             return nil
         }
         return values

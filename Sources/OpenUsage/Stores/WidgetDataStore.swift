@@ -622,10 +622,11 @@ final class WidgetDataStore {
             // Text lines carry provider notices for the local API; no dashboard descriptor consumes
             // them. Numeric widgets use typed progress/values lines and must never parse display text.
             return nil
-        case .values(_, let values, _, let expiriesAt, let unknownModels, let modelBreakdown):
+        case .values(_, let values, _, let expiriesAt, let unknownModels, let modelBreakdown, let titleOverride):
             // The number is carried raw — no regex re-parse. Presentation (title, icon, selection,
             // trailing word) comes from the descriptor's sample; the live numbers come from the line.
             var data = descriptor.sample
+            if let titleOverride { data.title = titleOverride }
             data.values = values
             // A `.values` line is unbounded by definition (see `MetricLine`), so it never renders as a
             // meter even when the descriptor template carries a placeholder limit — e.g. Claude's

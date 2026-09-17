@@ -231,7 +231,7 @@ final class OllamaUsageMapperTests: XCTestCase {
         XCTAssertNil(weeklyPeriod)
 
         // `cost` is a decimal string, not a number.
-        guard case .values(let spendLabel, let values, _, _, _, _) = mapped.lines[2] else {
+        guard case .values(let spendLabel, let values, _, _, _, _, _) = mapped.lines[2] else {
             return XCTFail("expected a spend row, got \(mapped.lines[2])")
         }
         XCTAssertEqual(spendLabel, "Last 4 Weeks")
