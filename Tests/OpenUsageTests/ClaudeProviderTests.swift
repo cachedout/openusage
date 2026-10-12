@@ -436,8 +436,8 @@ final class ClaudeProviderTests: XCTestCase {
                         MetricValue(number: 150, kind: .count, label: "tokens")])
         XCTAssertEqual(httpClient.requests.map(\.url.absoluteString), [
             "https://api.anthropic.com/api/oauth/usage",
-            "https://api.anthropic.com/api/oauth/usage?cedar_ember=1&skip_spend=1",
-            "https://api.anthropic.com/api/oauth/profile"
+            "https://api.anthropic.com/api/oauth/profile",
+            "https://api.anthropic.com/api/oauth/usage?cedar_ember=1&skip_spend=1"
         ])
     }
 

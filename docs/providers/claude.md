@@ -26,7 +26,9 @@ back to the plan saved with your login.
 **Enterprise plans:** Session, Weekly, Fable, and Sonnet are not available on enterprise accounts —
 those rows are hidden rather than shown as "No data". The **Spend** row shows your monthly billing
 total; when Anthropic reports a spending limit it appears as a bounded meter, otherwise the spend
-is shown as an unbounded amount.
+is shown as an unbounded amount, including a zero total at the start of a billing period. The live
+account profile determines whether billing is shown as Spend, even if your saved login still names
+an older consumer plan.
 
 ## Rate limit resets
 

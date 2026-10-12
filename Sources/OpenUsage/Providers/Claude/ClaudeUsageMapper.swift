@@ -12,7 +12,10 @@ enum ClaudeUsageMapper {
     static let sessionPeriodMs = MetricPeriod.sessionMs
     static let weeklyPeriodMs = MetricPeriod.weekMs
 
-    static func mapUsageResponse(_ response: HTTPResponse, credentials: ClaudeOAuth, now: Date = Date()) throws -> ClaudeMappedUsage {
+    static func mapUsageResponse(
+        _ response: HTTPResponse, credentials: ClaudeOAuth,
+        profile: ClaudeAccountProfile? = nil, now: Date = Date()
+    ) throws -> ClaudeMappedUsage {
         try ProviderAuthRetry.requireSuccess(
             response,
             authExpired: ClaudeAuthError.tokenExpired,
@@ -24,7 +27,8 @@ enum ClaudeUsageMapper {
         }
 
         var lines: [MetricLine] = []
-        let isEnterprise = credentials.subscriptionType?.lowercased() == "enterprise"
+        let subscriptionType = liveSubscriptionType(profile: profile) ?? credentials.subscriptionType
+        let isEnterprise = subscriptionType?.lowercased() == "enterprise"
         if !isEnterprise {
             appendUsageWindow(body["five_hour"], label: "Session", periodDurationMs: sessionPeriodMs, to: &lines)
             appendUsageWindow(body["seven_day"], label: "Weekly", periodDurationMs: weeklyPeriodMs, to: &lines)
@@ -34,7 +38,8 @@ enum ClaudeUsageMapper {
         appendExtraUsage(body["extra_usage"], isEnterprise: isEnterprise, to: &lines)
 
         return ClaudeMappedUsage(
-            plan: formatPlan(subscriptionType: credentials.subscriptionType, rateLimitTier: credentials.rateLimitTier),
+            plan: profile.flatMap { formatLivePlan(profile: $0, credentials: credentials) }
+                ?? formatPlan(subscriptionType: credentials.subscriptionType, rateLimitTier: credentials.rateLimitTier),
             lines: lines
         )
     }
@@ -156,13 +161,16 @@ enum ClaudeUsageMapper {
     /// the caller keeps the stored plan.
     static func formatLivePlan(profile: ClaudeAccountProfile, credentials: ClaudeOAuth) -> String? {
         guard let organization = profile.organization else { return nil }
-        let subscriptionType = organization.organizationType.map { type in
-            type.hasPrefix("claude_") ? String(type.dropFirst("claude_".count)) : type
-        }
         return formatPlan(
-            subscriptionType: subscriptionType ?? credentials.subscriptionType,
+            subscriptionType: liveSubscriptionType(profile: profile) ?? credentials.subscriptionType,
             rateLimitTier: organization.rateLimitTier ?? credentials.rateLimitTier
         )
+    }
+
+    private static func liveSubscriptionType(profile: ClaudeAccountProfile?) -> String? {
+        profile?.organization?.organizationType.map { type in
+            type.hasPrefix("claude_") ? String(type.dropFirst("claude_".count)) : type
+        }
     }
 
     private static func appendUsageWindow(_ value: Any?, label: String, periodDurationMs: Int, to lines: inout [MetricLine]) {
@@ -227,7 +235,7 @@ enum ClaudeUsageMapper {
                 format: .dollars,
                 titleOverride: isEnterprise ? "Spend" : nil
             ))
-        } else if used > 0 {
+        } else if used > 0 || (isEnterprise && used == 0) {
             // No monthly cap: carry the spend unbounded so it formats through `MetricFormatter`
             // (compact like the spend tiles, e.g. "$1.2K spent") without manufacturing a false limit.
             // Enterprise accounts use titleOverride so the row shows "Spend" instead of "Extra Usage".
