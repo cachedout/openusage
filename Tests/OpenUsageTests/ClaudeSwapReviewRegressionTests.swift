@@ -91,7 +91,7 @@ final class ClaudeSwapReviewRegressionTests: XCTestCase {
             }
             XCTAssertEqual(used, expected)
         }
-        XCTAssertEqual(http.requests.map(\.url.path), ["/api/oauth/profile", "/api/oauth/usage"])
+        XCTAssertEqual(http.requests.filter { !$0.isClaudeResetGrantsCheck }.map(\.url.path), ["/api/oauth/profile", "/api/oauth/usage"])
         XCTAssertTrue(http.requests.allSatisfy { $0.headers["Authorization"] == "Bearer session" })
         XCTAssertEqual(auth.credentialGeneration(), generation)
     }
@@ -133,9 +133,9 @@ final class ClaudeSwapReviewRegressionTests: XCTestCase {
         XCTAssertNil(result, "An unknown organization cannot claim the saved organization's history")
     }
 
-    func testOnlyPrimaryCardAllowsUnattributedSessions() async throws {
-        // Regression: every non-Desktop card was given allowsUnattributedSessions, so each swap card
-        // claimed the same ~/.claude sessions, duplicating local spend across providers.
+    func testMultipleCardsRequireSessionOwnership() async throws {
+        // Regression: multiple cards must not enable the broad unattributed-session fallback.
+        // The scanner assigns default-home CLI sessions separately to the current default login.
         let user2 = "22222222-2222-2222-2222-222222222222"
         let org2 = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
         let swapOnly = ClaudeSwapAccount(
@@ -168,8 +168,8 @@ final class ClaudeSwapReviewRegressionTests: XCTestCase {
         XCTAssertEqual(providers.count, 2)
         let primaryProvider = try XCTUnwrap(providers.first { $0.provider.id == primaryCard.id })
         let swapProvider = try XCTUnwrap(providers.first { $0.provider.id == swapCard.id })
-        XCTAssertTrue(primaryProvider.logUsageScanner.allowsUnattributedSessions,
-                      "primary CLI card must claim unattributed ~/.claude sessions")
+        XCTAssertFalse(primaryProvider.logUsageScanner.allowsUnattributedSessions,
+                       "primary CLI card must use current-login ownership when multiple accounts are known")
         XCTAssertFalse(swapProvider.logUsageScanner.allowsUnattributedSessions,
                        "swap-account card must not duplicate unattributed ~/.claude sessions")
     }

@@ -39,6 +39,45 @@ enum ClaudeUsageMapper {
         )
     }
 
+    /// The Rate Limit Resets row from the reset-grants request; `nil` when the account is outside the
+    /// program (no `cedar_ember` block).
+    static func mapResetGrantsResponse(_ response: HTTPResponse, now: Date = Date()) throws -> MetricLine? {
+        try ProviderAuthRetry.requireSuccess(
+            response,
+            authExpired: ClaudeAuthError.tokenExpired,
+            requestFailed: { ClaudeUsageError.requestFailed($0) }
+        )
+        guard let body = ProviderParse.jsonObject(response.body) else {
+            throw ClaudeUsageError.invalidResponse
+        }
+        return resetGrantsLine(body["cedar_ember"], now: now)
+    }
+
+    /// A Rate Limit Resets line held between fetches, minus every reset whose deadline has passed. Other
+    /// lines pass through unchanged.
+    static func droppingElapsedResetGrants(_ line: MetricLine, now: Date) -> MetricLine {
+        guard case .values(let label, let values, let colorHex, let expiriesAt, let unknownModels, let breakdown, _) = line,
+              expiriesAt.contains(where: { $0 <= now })
+        else { return line }
+        let elapsed = expiriesAt.filter { $0 <= now }.count
+        let remaining = values.map { value in
+            var value = value
+            if value.kind == .count { value.number = max(0, value.number - Double(elapsed)) }
+            return value
+        }
+        return .values(
+            label: label, values: remaining, colorHex: colorHex,
+            expiriesAt: expiriesAt.filter { $0 > now },
+            unknownModels: unknownModels, modelBreakdown: breakdown
+        )
+    }
+
+    /// Labels of the lines `mapUsageResponse` produces from the live usage endpoint (everything else on a
+    /// Claude snapshot is recomputed locally or is a rate-limit notice).
+    static let liveLimitLabels: Set<String> = [
+        "Session", "Weekly", "Sonnet", "Fable", "Extra usage spent", "Rate Limit Resets"
+    ]
+
     /// Snapshot shown when the usage endpoint rate-limits us and there is no last-good usage to fall back
     /// on (e.g. the first fetch after launch): a status badge plus the staleness note, no live bars.
     static func rateLimitedUsage(credentials: ClaudeOAuth, retryAfterSeconds: Int?) -> ClaudeMappedUsage {
@@ -198,6 +237,34 @@ enum ClaudeUsageMapper {
                 titleOverride: isEnterprise ? "Spend" : nil
             ))
         }
+    }
+
+    /// Usage-limit reset grants from the `cedar_ember` block (e.g. a launch promo's "one usage-limit reset
+    /// for Pro and Max"), shown read-only like Codex's reset credits: the row reads "N available" and each
+    /// remaining reset's grant deadline (`ends_at`) rides along in `expiriesAt` for the resets popover. A
+    /// grant with several resets left contributes one expiry per reset. Grants already past their deadline
+    /// or with none left are skipped. An ineligible account (`eligible: false`) reads "0 available"; a
+    /// missing or `null` block (plans outside the program) emits no row. Paused grants still count — they
+    /// are owned, just not usable this instant.
+    private static func resetGrantsLine(_ value: Any?, now: Date) -> MetricLine? {
+        guard let object = value as? [String: Any] else { return nil }
+        var count = 0
+        var expiries: [Date] = []
+        if object["eligible"] as? Bool == true {
+            for case let grant as [String: Any] in object["grants"] as? [Any] ?? [] {
+                guard let left = ProviderParse.number(grant["resets_left"]), left >= 1 else { continue }
+                let resets = Int(left.rounded(.down))
+                let endsAt = resetDate(grant["ends_at"])
+                if let endsAt, endsAt <= now { continue }
+                count += resets
+                if let endsAt { expiries += Array(repeating: endsAt, count: resets) }
+            }
+        }
+        return .values(
+            label: "Rate Limit Resets",
+            values: [MetricValue(number: Double(count), kind: .count, label: "available")],
+            expiriesAt: expiries.sorted()
+        )
     }
 
     private static func resetDate(_ value: Any?) -> Date? {
